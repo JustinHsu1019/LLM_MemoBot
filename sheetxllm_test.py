@@ -85,6 +85,7 @@ def find_and_update_empty_cell(link, file_name):
             row = values[row_index]
             if len(row) > 2 and row[2] == '':
                 memo_text = row[1]
+                logging.info(f"Processing memo text: {memo_text}")
                 response = gemi.Gemini_Template(f"""
                 【PDF檔案名稱】：{file_name}
                 【文字描述】：{memo_text}
@@ -94,7 +95,8 @@ def find_and_update_empty_cell(link, file_name):
                 輸出請一定用英文，並且只要輸出 True 或是 False 就好，不需要有任何其他文字在其中
                 """)
 
-                if response == 'True':
+                logging.info(f"Gemini response: {response}")
+                if 'True' in response:
                     sheets_service.spreadsheets().values().update(
                         spreadsheetId=spreadsheet_id,
                         range=f'C{row_index + 1}',
@@ -140,6 +142,7 @@ def handle_text_message(event):
     pdf_link_match = re.search(r'http[^\s]+\.pdf', text)
     pdf_link = pdf_link_match.group(0) if pdf_link_match else None
 
+    logging.info(f"Text message received: {text}")
     append_to_sheet(date=timestamp, text=text, pdf_link=pdf_link)
 
 @handler.add(MessageEvent, message=FileMessage)
@@ -149,18 +152,24 @@ def handle_file_message(event):
     ext = event.message.file_name.split('.')[-1]
     file_path = f"/home/certidtest/mysite/tmp/{message_id}.{ext}"
 
-    with open(file_path, 'wb') as fd:
-        for chunk in message_content.iter_content():
-            fd.write(chunk)
-
-    link = upload_to_drive(file_path, event.message.file_name)
-    if link:
-        find_and_update_empty_cell(link, event.message.file_name)
-
     try:
-        os.remove(file_path)
+        with open(file_path, 'wb') as fd:
+            for chunk in message_content.iter_content():
+                fd.write(chunk)
+        logging.info(f"File saved: {file_path}")
+
+        link = upload_to_drive(file_path, event.message.file_name)
+        if link:
+            find_and_update_empty_cell(link, event.message.file_name)
+
     except Exception as e:
-        logging.error(f"Failed to remove file: {e}")
+        logging.error(f"Error processing file message: {e}")
+    finally:
+        try:
+            os.remove(file_path)
+            logging.info(f"File removed: {file_path}")
+        except Exception as e:
+            logging.error(f"Failed to remove file: {e}")
 
 if __name__ == "__main__":
     app.run(threaded=True)
