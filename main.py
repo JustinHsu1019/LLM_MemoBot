@@ -8,7 +8,7 @@ from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-import io
+import io, time
 
 chrome_options = Options()
 chrome_options.add_argument("--headless")
@@ -16,43 +16,47 @@ chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--disable-blink-features=BlockCredentialedSubresources")
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=chrome_options)
+driver.set_page_load_timeout(60)
 
-def get_consecutive_days(driver, stock):
+def get_consecutive_days(driver, stock, retries=3):
     url = f"https://www.cmoney.tw/finance/{stock}/f00036"
-    driver.get(url)
-    driver.implicitly_wait(10)
+    attempt = 0
+    while attempt < retries:
+        try:
+            driver.get(url)
+            driver.implicitly_wait(10)
+            table = driver.find_element(By.CSS_SELECTOR, "table.tb.tb1")
+            rows = table.find_elements(By.TAG_NAME, "tr")
+            data = []
 
-    try:
-        table = driver.find_element(By.CSS_SELECTOR, "table.tb.tb1")
-        rows = table.find_elements(By.TAG_NAME, "tr")
-        data = []
+            for row in rows:
+                cols = row.find_elements(By.TAG_NAME, "td")
+                if cols:
+                    data.append([col.text.strip() for col in cols])
 
-        for row in rows:
-            cols = row.find_elements(By.TAG_NAME, "td")
-            if cols:
-                data.append([col.text.strip() for col in cols])
+            columns = ["日期", "外資買賣超", "投信買賣超", "自營商買賣超", "三大法人合計", "外資-持股張數", "外資-持股比率", "投信-持股張數", "投信-持股比率", "自營商-持股張數", "自營商-持股比率"]
+            df = pd.DataFrame(data, columns=columns)
 
-        columns = ["日期", "外資買賣超", "投信買賣超", "自營商買賣超", "三大法人合計", "外資-持股張數", "外資-持股比率", "投信-持股張數", "投信-持股比率", "自營商-持股張數", "自營商-持股比率"]
-        df = pd.DataFrame(data, columns=columns)
+            df["投信買賣超"] = pd.to_numeric(df["投信買賣超"].str.replace(',', ''), errors='coerce')
 
-        df["投信買賣超"] = pd.to_numeric(df["投信買賣超"].str.replace(',', ''), errors='coerce')
+            def get_consecutive_buy_sell(column):
+                if df[column].empty:
+                    return "No data"
+                count = 0
+                sign = 1 if df[column].iloc[0] > 0 else -1
+                for value in df[column]:
+                    if (sign > 0 and value > 0) or (sign < 0 and value < 0):
+                        count += 1
+                    else:
+                        break
+                return "連續" if count == len(df[column]) else count
 
-        def get_consecutive_buy_sell(column):
-            if df[column].empty:
-                return "No data"
-            count = 0
-            sign = 1 if df[column].iloc[0] > 0 else -1
-            for value in df[column]:
-                if (sign > 0 and value > 0) or (sign < 0 and value < 0):
-                    count += 1
-                else:
-                    break
-            return "連續" if count == len(df[column]) else count
-
-        return get_consecutive_buy_sell("投信買賣超")
-    except Exception as e:
-        print(f"Error processing stock {stock}: {e}")
-        return "Error"
+            return get_consecutive_buy_sell("投信買賣超")
+        except Exception as e:
+            print(f"Error processing stock {stock}, attempt {attempt + 1}: {e}")
+            attempt += 1
+            time.sleep(5)
+    return "Error"
 
 def scrape_data(driver, url):
     driver.get(url)
