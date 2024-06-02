@@ -89,9 +89,9 @@ combined_data = pd.concat([df1, blank_row, df2], ignore_index=True)
 temp_num = combined_data["代碼 / 股票名稱"].apply(lambda x: x.split(" ")[0] if " " in x else "")
 
 def process_stock_code(stock_code):
-    if stock_code.strip():
-        return get_consecutive_days(driver, stock_code)
-    return ""
+    # if stock_code.strip():
+    #     return get_consecutive_days(driver, stock_code)
+    return "我是我是"
 
 combined_data["連續買 / 賣超"] = temp_num.apply(process_stock_code)
 
@@ -127,33 +127,26 @@ with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
     combined_data.to_excel(writer, sheet_name='工作表', startrow=2, startcol=1, index=False)
     workbook = writer.book
     worksheet = writer.sheets['工作表']
-    worksheet.set_column('B:E', 20)
+    
     current_date = datetime.now().strftime("%Y/%m/%d")
     worksheet.write('B2', current_date)
 
     red_format = workbook.add_format({'bg_color': 'red', 'font_color': 'white'})
-    worksheet.conditional_format('B4:B33', {'type': 'no_blanks', 'format': red_format})
-
     green_format = workbook.add_format({'bg_color': 'green', 'font_color': 'white'})
+    center_format = workbook.add_format({'font_name': 'Microsoft JhengHei', 'align': 'center'})
+
+    worksheet.conditional_format('B4:B33', {'type': 'no_blanks', 'format': red_format})
     worksheet.conditional_format('B35:B39', {'type': 'no_blanks', 'format': green_format})
 
-    header_format = workbook.add_format({'bold': True})
+    for col_num, col in enumerate(combined_data.columns, 1):
+        worksheet.set_column(col_num, col_num, 25, center_format)
+
+    header_format = workbook.add_format({'bold': True, 'font_name': 'Microsoft JhengHei', 'align': 'center'})
     for col_num, value in enumerate(combined_data.columns.values):
         worksheet.write(2, col_num + 1, value, header_format)
 
-    center_format = workbook.add_format({'align': 'center', 'font_name': 'Microsoft JhengHei'})
-    worksheet.set_column('B:B', None, center_format)
-    worksheet.set_column('E:E', None, center_format)
-
-    right_align_format = workbook.add_format({'align': 'right', 'font_name': 'Microsoft JhengHei'})
-    worksheet.set_column('D:D', None, right_align_format)
-    worksheet.set_column('E:E', None, right_align_format)
-
-    font_format = workbook.add_format({'font_name': 'Microsoft JhengHei'})
-    worksheet.set_column('B:E', None, font_format)
-
-    outer_border_format = workbook.add_format({'border': 1, 'border_color': 'black'})
-    worksheet.conditional_format(f'B2:E{len(combined_data)+2}', {'type': 'no_blanks', 'format': outer_border_format})
+    outer_border_format = workbook.add_format({'border': 1, 'border_color': 'black', 'align': 'center'})
+    worksheet.conditional_format(f'B2:F{len(combined_data)+3}', {'type': 'no_blanks', 'format': outer_border_format})
 
 output.seek(0)
 drive_link = upload_to_drive(output)
