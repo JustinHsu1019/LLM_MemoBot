@@ -8,7 +8,8 @@ from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-import io, time
+import io, time, openpyxl
+from openpyxl.styles import Side, Border
 
 chrome_options = Options()
 chrome_options.add_argument("--headless")
@@ -89,9 +90,9 @@ combined_data = pd.concat([df1, blank_row, df2], ignore_index=True)
 temp_num = combined_data["代碼 / 股票名稱"].apply(lambda x: x.split(" ")[0] if " " in x else "")
 
 def process_stock_code(stock_code):
-    # if stock_code.strip():
-    #     return get_consecutive_days(driver, stock_code)
-    return "我是我是"
+    if stock_code.strip():
+        return get_consecutive_days(driver, stock_code)
+    return ""
 
 combined_data["連續買 / 賣超"] = temp_num.apply(process_stock_code)
 
@@ -123,30 +124,95 @@ def upload_to_drive(file_content):
     return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
 
 output = io.BytesIO()
-with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+with pd.ExcelWriter(output, engine='openpyxl') as writer:
     combined_data.to_excel(writer, sheet_name='工作表', startrow=2, startcol=1, index=False)
     workbook = writer.book
     worksheet = writer.sheets['工作表']
     
     current_date = datetime.now().strftime("%Y/%m/%d")
-    worksheet.write('B2', current_date)
+    worksheet.cell(row=2, column=2).value = current_date
 
-    red_format = workbook.add_format({'bg_color': 'red', 'font_color': 'white'})
-    green_format = workbook.add_format({'bg_color': 'green', 'font_color': 'white'})
-    center_format = workbook.add_format({'font_name': 'Microsoft JhengHei', 'align': 'center'})
+    red_fill = openpyxl.styles.PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
+    green_fill = openpyxl.styles.PatternFill(start_color='00FF00', end_color='00FF00', fill_type='solid')
+    center_align = openpyxl.styles.Alignment(horizontal='center')
+    left_align = openpyxl.styles.Alignment(horizontal='left')
+    right_align = openpyxl.styles.Alignment(horizontal='right')
+    white_font = openpyxl.styles.Font(name='Microsoft JhengHei', color='FFFFFF')
 
-    worksheet.conditional_format('B4:B33', {'type': 'no_blanks', 'format': red_format})
-    worksheet.conditional_format('B35:B39', {'type': 'no_blanks', 'format': green_format})
+    for row in worksheet.iter_rows(min_row=4, max_row=33, min_col=2, max_col=2):
+        for cell in row:
+            cell.fill = red_fill
+            cell.font = white_font
 
-    for col_num, col in enumerate(combined_data.columns, 1):
-        worksheet.set_column(col_num, col_num, 25, center_format)
+    for row in worksheet.iter_rows(min_row=35, max_row=39, min_col=2, max_col=2):
+        for cell in row:
+            cell.fill = green_fill
+            cell.font = white_font
 
-    header_format = workbook.add_format({'bold': True, 'font_name': 'Microsoft JhengHei', 'align': 'center'})
-    for col_num, value in enumerate(combined_data.columns.values):
-        worksheet.write(2, col_num + 1, value, header_format)
+    for col_num in range(2, worksheet.max_column + 1):
+        for row_num in range(3, worksheet.max_row + 1):
+            cell = worksheet.cell(row=row_num, column=col_num)
+            if col_num == 4 or col_num == 5:
+                cell.alignment = right_align
+            elif col_num == 3:
+                cell.alignment = left_align
+            else:
+                cell.alignment = center_align
+            cell.font = white_font if cell.fill == red_fill or cell.fill == green_fill else openpyxl.styles.Font(name='Microsoft JhengHei')
 
-    outer_border_format = workbook.add_format({'border': 1, 'border_color': 'black', 'align': 'center'})
-    worksheet.conditional_format(f'B2:F{len(combined_data)+3}', {'type': 'no_blanks', 'format': outer_border_format})
+    header_font = openpyxl.styles.Font(name='Microsoft JhengHei')
+    for cell in worksheet[3]:
+        cell.font = header_font
+        cell.alignment = center_align
+        new_border = openpyxl.styles.Border(left=openpyxl.styles.Side(border_style=None),
+                                            right=openpyxl.styles.Side(border_style=None),
+                                            top=openpyxl.styles.Side(border_style=None),
+                                            bottom=openpyxl.styles.Side(border_style=None))
+        cell.border = new_border
+
+    for col in worksheet.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 10)
+        worksheet.column_dimensions[column].width = adjusted_width
+
+    for row in range(1, worksheet.max_row + 1):
+        worksheet.row_dimensions[row].height = 20
+
+    thick_border = Border(
+        left=Side(style='thick', color='000000'),
+        right=Side(style='thick', color='000000'),
+        top=Side(style='thick', color='000000'),
+        bottom=Side(style='thick', color='000000')
+    )
+
+    for row in range(2, 40):
+        worksheet.cell(row=row, column=2).border = Border(left=Side(style='thick', color='000000'))
+        worksheet.cell(row=row, column=6).border = Border(right=Side(style='thick', color='000000'))
+
+    for col in range(2, 7):
+        worksheet.cell(row=2, column=col).border = Border(top=Side(style='thick', color='000000'))
+        worksheet.cell(row=39, column=col).border = Border(bottom=Side(style='thick', color='000000'))
+
+    for row in range(2, 40):
+        worksheet.cell(row=row, column=2).border = Border(
+            left=Side(style='thick', color='000000'),
+            bottom=worksheet.cell(row=row, column=2).border.bottom,
+            right=worksheet.cell(row=row, column=2).border.right,
+            top=worksheet.cell(row=row, column=2).border.top
+        )
+        worksheet.cell(row=row, column=6).border = Border(
+            right=Side(style='thick', color='000000'),
+            bottom=worksheet.cell(row=row, column=6).border.bottom,
+            left=worksheet.cell(row=row, column=6).border.left,
+            top=worksheet.cell(row=row, column=6).border.top
+        )
 
 output.seek(0)
 drive_link = upload_to_drive(output)
