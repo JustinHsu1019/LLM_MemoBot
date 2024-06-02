@@ -155,7 +155,7 @@ def update_google_sheet(date, link):
         SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
     sheets_service = build('sheets', 'v4', credentials=credentials)
-    spreadsheet_id = '1TR5ZcI7Yi_gmck3QdzCmb5_kmz8wQB9fC3LwKX0LpGo'
+    spreadsheet_id = '1ZNCRPM9N6qZBSPvP_ggou91xHjWxfM53MjfvlXEaweg'
     range_name = 'A:B'
     
     body = {
