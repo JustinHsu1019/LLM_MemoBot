@@ -131,6 +131,9 @@ with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
     current_date = datetime.now().strftime("%Y/%m/%d")
     worksheet.write('B2', current_date)
 
+    border_format = workbook.add_format({'border': 2})
+    worksheet.conditional_format('B2:F39', {'type': 'no_blanks', 'format': border_format})
+
     red_format = workbook.add_format({'bg_color': 'red', 'font_color': 'white'})
     worksheet.conditional_format('B4:B33', {'type': 'no_blanks', 'format': red_format})
 
@@ -140,20 +143,6 @@ with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
     header_format = workbook.add_format({'bold': True})
     for col_num, value in enumerate(combined_data.columns.values):
         worksheet.write(2, col_num + 1, value, header_format)
-
-    center_format = workbook.add_format({'align': 'center', 'font_name': 'Microsoft JhengHei'})
-    worksheet.set_column('B:B', None, center_format)
-    worksheet.set_column('E:E', None, center_format)
-
-    right_align_format = workbook.add_format({'align': 'right', 'font_name': 'Microsoft JhengHei'})
-    worksheet.set_column('D:D', None, right_align_format)
-    worksheet.set_column('E:E', None, right_align_format)
-
-    font_format = workbook.add_format({'font_name': 'Microsoft JhengHei'})
-    worksheet.set_column('B:E', None, font_format)
-
-    outer_border_format = workbook.add_format({'border': 1, 'border_color': 'black'})
-    worksheet.conditional_format(f'B2:E{len(combined_data)+2}', {'type': 'no_blanks', 'format': outer_border_format})
 
 output.seek(0)
 drive_link = upload_to_drive(output)
