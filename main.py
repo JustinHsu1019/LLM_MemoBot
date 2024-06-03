@@ -131,9 +131,10 @@ with pd.ExcelWriter(output, engine='openpyxl') as writer:
     
     current_date = datetime.now().strftime("%Y/%m/%d")
     worksheet.cell(row=2, column=2).value = current_date
+    worksheet.cell(row=2, column=2).font = openpyxl.styles.Font(name='Microsoft JhengHei')
 
     red_fill = openpyxl.styles.PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
-    green_fill = openpyxl.styles.PatternFill(start_color='00FF00', end_color='00FF00', fill_type='solid')
+    green_fill = openpyxl.styles.PatternFill(start_color='008000', end_color='008000', fill_type='solid')
     center_align = openpyxl.styles.Alignment(horizontal='center')
     left_align = openpyxl.styles.Alignment(horizontal='left')
     right_align = openpyxl.styles.Alignment(horizontal='right')
@@ -160,7 +161,7 @@ with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 cell.alignment = center_align
             cell.font = white_font if cell.fill == red_fill or cell.fill == green_fill else openpyxl.styles.Font(name='Microsoft JhengHei')
 
-    header_font = openpyxl.styles.Font(name='Microsoft JhengHei')
+    header_font = openpyxl.styles.Font(name='Microsoft JhengHei', bold=True)
     for cell in worksheet[3]:
         cell.font = header_font
         cell.alignment = center_align
