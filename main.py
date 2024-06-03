@@ -138,7 +138,7 @@ with pd.ExcelWriter(output, engine='openpyxl') as writer:
     center_align = openpyxl.styles.Alignment(horizontal='center')
     left_align = openpyxl.styles.Alignment(horizontal='left')
     right_align = openpyxl.styles.Alignment(horizontal='right')
-    white_font = openpyxl.styles.Font(name='Microsoft JhengHei', color='FFFFFF')
+    white_font = openpyxl.styles.Font(name='Microsoft JhengHei', color='FFFFFF', bold=True)
 
     for row in worksheet.iter_rows(min_row=4, max_row=33, min_col=2, max_col=2):
         for cell in row:
@@ -195,9 +195,9 @@ with pd.ExcelWriter(output, engine='openpyxl') as writer:
 
     for row in range(2, 40):
         worksheet.cell(row=row, column=2).border = Border(left=Side(style='thick', color='000000'))
-        worksheet.cell(row=row, column=6).border = Border(right=Side(style='thick', color='000000'))
+        worksheet.cell(row=row, column=7).border = Border(right=Side(style='thick', color='000000'))
 
-    for col in range(2, 7):
+    for col in range(2, 8):
         worksheet.cell(row=2, column=col).border = Border(top=Side(style='thick', color='000000'))
         worksheet.cell(row=39, column=col).border = Border(bottom=Side(style='thick', color='000000'))
 
@@ -208,11 +208,11 @@ with pd.ExcelWriter(output, engine='openpyxl') as writer:
             right=worksheet.cell(row=row, column=2).border.right,
             top=worksheet.cell(row=row, column=2).border.top
         )
-        worksheet.cell(row=row, column=6).border = Border(
+        worksheet.cell(row=row, column=7).border = Border(
             right=Side(style='thick', color='000000'),
-            bottom=worksheet.cell(row=row, column=6).border.bottom,
-            left=worksheet.cell(row=row, column=6).border.left,
-            top=worksheet.cell(row=row, column=6).border.top
+            bottom=worksheet.cell(row=row, column=7).border.bottom,
+            left=worksheet.cell(row=row, column=7).border.left,
+            top=worksheet.cell(row=row, column=7).border.top
         )
 
 output.seek(0)
