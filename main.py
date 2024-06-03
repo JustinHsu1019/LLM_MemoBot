@@ -131,14 +131,14 @@ with pd.ExcelWriter(output, engine='openpyxl') as writer:
     
     current_date = datetime.now().strftime("%Y/%m/%d")
     worksheet.cell(row=2, column=2).value = current_date
-    worksheet.cell(row=2, column=2).font = openpyxl.styles.Font(name='Microsoft JhengHei')
+    worksheet.cell(row=2, column=2).font = openpyxl.styles.Font(name='Microsoft JhengHei', size=12)
 
     red_fill = openpyxl.styles.PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
     green_fill = openpyxl.styles.PatternFill(start_color='008000', end_color='008000', fill_type='solid')
     center_align = openpyxl.styles.Alignment(horizontal='center')
     left_align = openpyxl.styles.Alignment(horizontal='left')
     right_align = openpyxl.styles.Alignment(horizontal='right')
-    white_font = openpyxl.styles.Font(name='Microsoft JhengHei', color='FFFFFF', bold=True)
+    white_font = openpyxl.styles.Font(name='Microsoft JhengHei', color='FFFFFF', bold=True, size=12)
 
     for row in worksheet.iter_rows(min_row=4, max_row=33, min_col=2, max_col=2):
         for cell in row:
@@ -159,9 +159,9 @@ with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 cell.alignment = left_align
             else:
                 cell.alignment = center_align
-            cell.font = white_font if cell.fill == red_fill or cell.fill == green_fill else openpyxl.styles.Font(name='Microsoft JhengHei')
+            cell.font = white_font if cell.fill == red_fill or cell.fill == green_fill else openpyxl.styles.Font(name='Microsoft JhengHei', size=12)
 
-    header_font = openpyxl.styles.Font(name='Microsoft JhengHei', bold=True)
+    header_font = openpyxl.styles.Font(name='Microsoft JhengHei', bold=True, size=12)
     for cell in worksheet[3]:
         cell.font = header_font
         cell.alignment = center_align
