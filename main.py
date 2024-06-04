@@ -19,7 +19,7 @@ service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=chrome_options)
 driver.set_page_load_timeout(60)
 
-def get_consecutive_days(driver, stock, retries=3):
+def get_consecutive_days(driver, stock, retries=20):
     url = f"https://www.cmoney.tw/finance/{stock}/f00036"
     attempt = 0
     while attempt < retries:
@@ -56,7 +56,7 @@ def get_consecutive_days(driver, stock, retries=3):
         except Exception as e:
             print(f"Error processing stock {stock}, attempt {attempt + 1}: {e}")
             attempt += 1
-            time.sleep(5)
+            time.sleep(10)
     return "Error"
 
 def scrape_data(driver, url):
