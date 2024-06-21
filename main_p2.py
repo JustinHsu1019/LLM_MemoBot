@@ -83,7 +83,11 @@ def find_and_update_empty_cell(link, file_name):
 
         while row_index >= 0:
             row = values[row_index]
-            if len(row) > 2 and row[2] == '':
+            try:
+                if row[2] == '':
+                    pa = "pass"
+            except:
+            # if len(row) > 2 and row[2] == '':
                 memo_text = row[1]
                 logging.info(f"Processing memo text: {memo_text}")
                 response = gemi.Gemini_Template(f"""
@@ -172,4 +176,4 @@ def handle_file_message(event):
             logging.error(f"Failed to remove file: {e}")
 
 if __name__ == "__main__":
-    app.run(threaded=True)
+    app.run(host="0.0.0.0", threaded=True)

@@ -3,6 +3,5 @@ google_api_python_client==2.129.0
 line_bot_sdk==3.11.0
 openai==1.30.3
 protobuf==5.27.0
-Requests==2.32.2
 sentence_transformers==2.7.0
 weaviate_client==4.6.3
