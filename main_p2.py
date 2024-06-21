@@ -19,14 +19,14 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # 設定 Google Drive API 和 Google Sheets API
 SCOPES = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/spreadsheets']
-creds, _ = google.auth.load_credentials_from_file('/home/certidtest/mysite/credentials.json', scopes=SCOPES)
+creds, _ = google.auth.load_credentials_from_file('cred.json', scopes=SCOPES)
 
 drive_service = build('drive', 'v3', credentials=creds)
 sheets_service = build('sheets', 'v4', credentials=creds)
 spreadsheet_id = 'spreadsheet_id'
 
 # 設定日誌
-log_directory = '/home/certidtest/mysite/logs'
+log_directory = 'logs'
 if not os.path.exists(log_directory):
     os.makedirs(log_directory)
 
@@ -150,7 +150,7 @@ def handle_file_message(event):
     message_id = event.message.id
     message_content = line_bot_api.get_message_content(message_id)
     ext = event.message.file_name.split('.')[-1]
-    file_path = f"/home/certidtest/mysite/tmp/{message_id}.{ext}"
+    file_path = f"tmp/{message_id}.{ext}"
 
     try:
         with open(file_path, 'wb') as fd:
