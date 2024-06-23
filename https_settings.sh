@@ -1,6 +1,10 @@
-# [First] 使用 noip 註冊一個 Domain
+# [First] 使用 noip 註冊一個 Domain + IPv4 Address 綁定正確
 sudo apt-get install python3 python3-pip nginx
 sudo apt-get install certbot python3-certbot-nginx
+sudo pkill -f nginx
+sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw reload
 sudo certbot certonly --standalone -d your_domain
 sudo openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
 

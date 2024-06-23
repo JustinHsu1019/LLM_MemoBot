@@ -81,6 +81,29 @@ def find_and_update_empty_cell(link, file_name):
         values = result.get('values', [])
         row_index = len(values) - 1
 
+        gemi_response = gemi.Gemini_Template(f"""
+        【PDF檔案名稱】：{file_name}
+        
+        需求：請幫我從【PDF檔案名稱】提取出你認為這個檔案在講述的"一家"公司名稱
+
+        請注意 1. 提取最短的中文單詞
+        
+        舉例1: 富邦銀行財務表.pdf
+        就提取出"富邦"
+        舉例2: morgan 摩根大通相關分析.pdf
+        就提取出"摩根"
+        
+        就是說要能提取出足以辨識這家公司的單詞，但又不要太多字，要是最短的可辨識公司單詞，所以像是如果 舉例1 裡面你提取出"富"就不行，這完全無法從這個字判斷出"富邦銀行"
+        
+        請注意 2. 注意檔案名稱語意，我需要的只有一家公司名稱，所以要注意這個檔案在講的是哪"一"家公司
+        
+        舉例: 富邦銀行對摩根大通2020年的財務分析報告.pdf
+        就提取出"摩根"
+        因為在這個舉例中，富邦銀行只是做出這份分析報告的公司，但這份分析報告描述的是"摩根大通"，而非"富邦銀行"
+        """)
+
+        logging.info(f"Gemini response 公司名稱: {gemi_response}")
+
         while row_index >= 0:
             row = values[row_index]
             try:
@@ -90,17 +113,15 @@ def find_and_update_empty_cell(link, file_name):
             # if len(row) > 2 and row[2] == '':
                 memo_text = row[1]
                 logging.info(f"Processing memo text: {memo_text}")
-                response = gemi.Gemini_Template(f"""
-                【PDF檔案名稱】：{file_name}
-                【文字描述】：{memo_text}
-                請根據【文字描述】來考慮【PDF檔案名稱】是不是【文字描述】的附檔，基本上【文字描述】就是在講一下公司/銀行的財務狀況, 新聞等等。那 PDF檔案就會是他對應的財務細節等，基本上 PDF檔案名稱就會有那家公司/銀行的名稱，所以公司對應上了，基本就會是對的，但還是要考慮語意，不是有公司名稱就一定是他的附檔
+                # response = gemi.Gemini_Template(f"""
+                # 【PDF檔案名稱】：{file_name}
+                # 【文字描述】：{memo_text}
+                # 請根據【文字描述】來考慮【PDF檔案名稱】是不是【文字描述】的附檔，基本上【文字描述】就是在講一下公司/銀行的財務狀況, 新聞等等。那 PDF檔案就會是他對應的財務細節等，基本上 PDF檔案名稱就會有那家公司/銀行的名稱，所以公司對應上了，基本就會是對的，但還是要考慮語意，不是有公司名稱就一定是他的附檔
 
-                輸出：請輸出 True 或是 False
-                輸出請一定用英文，並且只要輸出 True 或是 False 就好，不需要有任何其他文字在其中
-                """)
-
-                logging.info(f"Gemini response: {response}")
-                if 'True' in response:
+                # 輸出：請輸出 True 或是 False
+                # 輸出請一定用英文，並且只要輸出 True 或是 False 就好，不需要有任何其他文字在其中
+                # """)
+                if gemi_response in memo_text:
                     sheets_service.spreadsheets().values().update(
                         spreadsheetId=spreadsheet_id,
                         range=f'C{row_index + 1}',
