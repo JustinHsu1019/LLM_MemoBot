@@ -136,11 +136,10 @@ def find_and_update_empty_cell(link, file_name):
                 if row[2] == '':
                     pa = "pass"
             except:
-                if not row[1]:
-                    memo_text = ""
-                    print("MEMO空值")
-                else:
+                try:
                     memo_text = row[1]
+                except:
+                    memo_text = ""
     
                 logging.info(f"Processing memo text: {memo_text}")
                 if gemi_response in memo_text:
