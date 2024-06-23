@@ -100,30 +100,33 @@ def find_and_update_empty_cell(link, file_name):
             spreadsheetId=spreadsheet_id,
             range=sheet_range
         ).execute()
-        
+
         values = result.get('values', [])
         row_index = len(values) - 1
 
-        gemi_response = gemi.Gemini_Template(f"""
-        【PDF檔案名稱】：{file_name}
-        
-        需求：請幫我從【PDF檔案名稱】提取出你認為這個檔案在講述的"一家"公司名稱
+        try:
+            gemi_response = gemi.Gemini_Template(f"""
+            【PDF檔案名稱】：{file_name}
+            
+            需求：請幫我從【PDF檔案名稱】提取出你認為這個檔案在講述的"一家"公司名稱
 
-        請注意 1. 提取最短的中文單詞
-        
-        舉例1: 富邦銀行財務表.pdf
-        就提取出"富邦"
-        舉例2: morgan 摩根大通相關分析.pdf
-        就提取出"摩根"
-        
-        就是說要能提取出足以辨識這家公司的單詞，但又不要太多字，要是最短的可辨識公司單詞，所以像是如果 舉例1 裡面你提取出"富"就不行，這完全無法從這個字判斷出"富邦銀行"
-        
-        請注意 2. 注意檔案名稱語意，我需要的只有一家公司名稱，所以要注意這個檔案在講的是哪"一"家公司
-        
-        舉例: 富邦銀行對摩根大通2020年的財務分析報告.pdf
-        就提取出"摩根"
-        因為在這個舉例中，富邦銀行只是做出這份分析報告的公司，但這份分析報告描述的是"摩根大通"，而非"富邦銀行"
-        """)
+            請注意 1. 提取最短的中文單詞
+            
+            舉例1: 富邦銀行財務表.pdf
+            就提取出"富邦"
+            舉例2: morgan 摩根大通相關分析.pdf
+            就提取出"摩根"
+            
+            就是說要能提取出足以辨識這家公司的單詞，但又不要太多字，要是最短的可辨識公司單詞，所以像是如果 舉例1 裡面你提取出"富"就不行，這完全無法從這個字判斷出"富邦銀行"
+            
+            請注意 2. 注意檔案名稱語意，我需要的只有一家公司名稱，所以要注意這個檔案在講的是哪"一"家公司
+            
+            舉例: 富邦銀行對摩根大通2020年的財務分析報告.pdf
+            就提取出"摩根"
+            因為在這個舉例中，富邦銀行只是做出這份分析報告的公司，但這份分析報告描述的是"摩根大通"，而非"富邦銀行"
+            """)
+        except:
+            gemi_response = "GEMINI解析錯誤"
 
         logging.info(f"Gemini response 公司名稱: {gemi_response}")
 
@@ -133,7 +136,12 @@ def find_and_update_empty_cell(link, file_name):
                 if row[2] == '':
                     pa = "pass"
             except:
-                memo_text = row[1]
+                if not row[1]:
+                    memo_text = ""
+                    print("MEMO空值")
+                else:
+                    memo_text = row[1]
+    
                 logging.info(f"Processing memo text: {memo_text}")
                 if gemi_response in memo_text:
                     sheets_service.spreadsheets().values().update(
@@ -192,27 +200,35 @@ def handle_file_message(event):
     ext = event.message.file_name.split('.')[-1]
     file_path = f"tmp/{message_id}.{ext}"
 
-    def process_file():
+    def save_file():
         try:
             with open(file_path, 'wb') as fd:
                 for chunk in message_content.iter_content():
                     fd.write(chunk)
             logging.info(f"File saved: {file_path}")
 
-            link = upload_to_drive(file_path, event.message.file_name)
-            if link:
-                find_and_update_empty_cell(link, event.message.file_name)
+            # 將檔案處理放入佇列
+            task_queue.put(lambda: process_file(file_path, event.message.file_name))
 
         except Exception as e:
-            logging.error(f"Error processing file message: {e}")
-        finally:
-            try:
-                os.remove(file_path)
-                logging.info(f"File removed: {file_path}")
-            except Exception as e:
-                logging.error(f"Failed to remove file: {e}")
+            logging.error(f"Error saving file: {e}")
 
-    task_queue.put(process_file)
+    threading.Thread(target=save_file).start()
+
+@retry(tries=5, delay=2, backoff=2)
+def process_file(file_path, file_name):
+    try:
+        link = upload_to_drive(file_path, file_name)
+        if link:
+            find_and_update_empty_cell(link, file_name)
+    except Exception as e:
+        logging.error(f"Error processing file: {e}")
+    finally:
+        try:
+            os.remove(file_path)
+            logging.info(f"File removed: {file_path}")
+        except Exception as e:
+            logging.error(f"Failed to remove file: {e}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", threaded=True)

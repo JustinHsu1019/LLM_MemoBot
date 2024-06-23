@@ -23,11 +23,10 @@ json 格式:
 }}
 """
     try:
-        # res = GPT_Template(prompt)
         res = Gemini_Template(prompt)
         res = json.loads(res)["輸出"]
     except:
-        res = "GPT 當掉囉! 請重新發問 >_<"
+        res = "GEMINI解析錯誤"
 
     return res
 
