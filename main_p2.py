@@ -7,13 +7,20 @@ import datetime, os, re
 import google.auth
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import threading
+import queue
+from retry import retry
 import utils.gemini_tem as gemi
 
 app = Flask(__name__)
 
+import utils.config_log as config_log
+config, logger, CONFIG_PATH = config_log.setup_config_and_logging()
+config.read(CONFIG_PATH)
+
 # 設定 LINE API
-LINE_CHANNEL_ACCESS_TOKEN = 'LINE_CHANNEL_ACCESS_TOKEN'
-LINE_CHANNEL_SECRET = 'LINE_CHANNEL_SECRET'
+LINE_CHANNEL_ACCESS_TOKEN = config.get("line", 'access_token')
+LINE_CHANNEL_SECRET = config.get("line", 'secret')
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
@@ -23,7 +30,7 @@ creds, _ = google.auth.load_credentials_from_file('cred.json', scopes=SCOPES)
 
 drive_service = build('drive', 'v3', credentials=creds)
 sheets_service = build('sheets', 'v4', credentials=creds)
-spreadsheet_id = 'spreadsheet_id'
+spreadsheet_id = config.get("line", 'sheet_id')
 
 # 設定日誌
 log_directory = 'logs'
@@ -33,11 +40,25 @@ if not os.path.exists(log_directory):
 log_path = os.path.join(log_directory, 'demo.log')
 
 logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levellevelname)s: %(message)s',
+                    format='%(asctime)s %(levelname)s: %(message)s',
                     handlers=[
                         logging.FileHandler(log_path),
                         logging.StreamHandler()
                     ])
+
+# 創建任務佇列
+task_queue = queue.Queue()
+
+def process_queue():
+    while True:
+        task = task_queue.get()
+        if task is None:
+            break
+        task()
+        task_queue.task_done()
+
+# 啟動佇列處理執行緒
+threading.Thread(target=process_queue, daemon=True).start()
 
 @app.route('/')
 def home():
@@ -54,6 +75,7 @@ def callback():
         abort(400)
     return 'OK'
 
+@retry(tries=5, delay=2, backoff=2)
 def upload_to_drive(file_path, file_name):
     try:
         file_metadata = {'name': file_name, 'mimeType': 'application/vnd.google-apps.document'}
@@ -68,8 +90,9 @@ def upload_to_drive(file_path, file_name):
         return link
     except Exception as e:
         logging.error(f"Failed to upload to drive: {e}")
-        return None
+        raise e
 
+@retry(tries=5, delay=2, backoff=2)
 def find_and_update_empty_cell(link, file_name):
     try:
         sheet_range = 'A:C'
@@ -110,17 +133,8 @@ def find_and_update_empty_cell(link, file_name):
                 if row[2] == '':
                     pa = "pass"
             except:
-            # if len(row) > 2 and row[2] == '':
                 memo_text = row[1]
                 logging.info(f"Processing memo text: {memo_text}")
-                # response = gemi.Gemini_Template(f"""
-                # 【PDF檔案名稱】：{file_name}
-                # 【文字描述】：{memo_text}
-                # 請根據【文字描述】來考慮【PDF檔案名稱】是不是【文字描述】的附檔，基本上【文字描述】就是在講一下公司/銀行的財務狀況, 新聞等等。那 PDF檔案就會是他對應的財務細節等，基本上 PDF檔案名稱就會有那家公司/銀行的名稱，所以公司對應上了，基本就會是對的，但還是要考慮語意，不是有公司名稱就一定是他的附檔
-
-                # 輸出：請輸出 True 或是 False
-                # 輸出請一定用英文，並且只要輸出 True 或是 False 就好，不需要有任何其他文字在其中
-                # """)
                 if gemi_response in memo_text:
                     sheets_service.spreadsheets().values().update(
                         spreadsheetId=spreadsheet_id,
@@ -138,7 +152,7 @@ def find_and_update_empty_cell(link, file_name):
         return False
     except Exception as e:
         logging.error(f"Failed to find and update empty cell: {e}")
-        return False
+        raise e
 
 def append_to_sheet(date, text=None, pdf_link=None):
     try:
@@ -156,6 +170,7 @@ def append_to_sheet(date, text=None, pdf_link=None):
         logging.info(f"Append response: {response}")
     except Exception as e:
         logging.error(f"Failed to append to sheet: {e}")
+        raise e
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
@@ -177,24 +192,27 @@ def handle_file_message(event):
     ext = event.message.file_name.split('.')[-1]
     file_path = f"tmp/{message_id}.{ext}"
 
-    try:
-        with open(file_path, 'wb') as fd:
-            for chunk in message_content.iter_content():
-                fd.write(chunk)
-        logging.info(f"File saved: {file_path}")
-
-        link = upload_to_drive(file_path, event.message.file_name)
-        if link:
-            find_and_update_empty_cell(link, event.message.file_name)
-
-    except Exception as e:
-        logging.error(f"Error processing file message: {e}")
-    finally:
+    def process_file():
         try:
-            os.remove(file_path)
-            logging.info(f"File removed: {file_path}")
+            with open(file_path, 'wb') as fd:
+                for chunk in message_content.iter_content():
+                    fd.write(chunk)
+            logging.info(f"File saved: {file_path}")
+
+            link = upload_to_drive(file_path, event.message.file_name)
+            if link:
+                find_and_update_empty_cell(link, event.message.file_name)
+
         except Exception as e:
-            logging.error(f"Failed to remove file: {e}")
+            logging.error(f"Error processing file message: {e}")
+        finally:
+            try:
+                os.remove(file_path)
+                logging.info(f"File removed: {file_path}")
+            except Exception as e:
+                logging.error(f"Failed to remove file: {e}")
+
+    task_queue.put(process_file)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", threaded=True)
