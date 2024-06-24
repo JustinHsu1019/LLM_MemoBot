@@ -78,8 +78,8 @@ def callback():
 @retry(tries=5, delay=2, backoff=2)
 def upload_to_drive(file_path, file_name):
     try:
-        file_metadata = {'name': file_name, 'mimeType': 'application/vnd.google-apps.document'}
-        media = MediaFileUpload(file_path, resumable=True)
+        file_metadata = {'name': file_name}
+        media = MediaFileUpload(file_path, mimetype='application/pdf', resumable=True)
         file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
         # 取得公開連結
