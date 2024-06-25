@@ -133,9 +133,12 @@ def find_and_update_empty_cell(link, file_name):
 
         while row_index < len(values):
             row = values[row_index]
+            while len(row) < 3:
+                row.append('')
             try:
                 if row[2] == '':
-                    pa = "pass"
+                    if row[200] != '':
+                        pa = "pass"
             except:
                 try:
                     memo_text = row[1]
@@ -173,15 +176,13 @@ def append_to_sheet(date, text=None, pdf_link=None):
         ).execute()
         values = result.get('values', [])
         
-        # 檢查 text 是否存在於 B 欄位
-        for row in values[1:]:  # 跳過第一行標題
-            if len(row) > 1 and row[1] == text:
-                logging.info(f"Text already exists: {text}")
-                return
+        # 確保每行都有足夠的列數
+        for row in values:
+            while len(row) < 3:
+                row.append('')
         
         # 插入新的值在第二行
-        new_row = [date, text, pdf_link if pdf_link else '']
-        values.insert(1, new_row)
+        values.insert(1, [date, text, pdf_link])
         value_range_body = {
             "values": values
         }
