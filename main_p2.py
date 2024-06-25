@@ -168,7 +168,7 @@ def find_and_update_empty_cell(link, file_name):
 def append_to_sheet(date, text=None, pdf_link=None):
     try:
         sheet_range = 'A:C'
-        
+
         # 先取得目前的值
         result = sheets_service.spreadsheets().values().get(
             spreadsheetId=spreadsheet_id,
@@ -205,7 +205,7 @@ def handle_text_message(event):
 
     # 檢查是否包含 PDF 連結
     pdf_link_match = re.search(r'http[^\s]+\.pdf', text)
-    pdf_link = pdf_link_match.group(0) if pdf_link_match else None
+    pdf_link = pdf_link_match.group(0) if pdf_link_match else ""
 
     logging.info(f"Text message received: {text}")
     task_queue.put(lambda: append_to_sheet(date=timestamp, text=text, pdf_link=pdf_link))
