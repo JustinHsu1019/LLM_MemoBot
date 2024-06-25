@@ -49,13 +49,20 @@ logging.basicConfig(level=logging.INFO,
 # 創建任務佇列
 task_queue = queue.Queue()
 
+queue_lock = threading.Lock()
+file_lock = threading.Lock()
+
 def process_queue():
     while True:
-        task = task_queue.get()
-        if task is None:
+        task = None
+        with queue_lock:
+            if not task_queue.empty():
+                task = task_queue.get()
+        if task:
+            task()
+            task_queue.task_done()
+        else:
             break
-        task()
-        task_queue.task_done()
 
 # 啟動佇列處理執行緒
 threading.Thread(target=process_queue, daemon=True).start()
@@ -210,14 +217,13 @@ def handle_file_message(event):
 
     def save_file():
         try:
-            with open(file_path, 'wb') as fd:
-                for chunk in message_content.iter_content():
-                    fd.write(chunk)
+            with file_lock:
+                with open(file_path, 'wb') as fd:
+                    for chunk in message_content.iter_content():
+                        fd.write(chunk)
             logging.info(f"File saved: {file_path}")
 
-            # 將檔案處理放入佇列
             task_queue.put(lambda: process_file(file_path, event.message.file_name))
-
         except Exception as e:
             logging.error(f"Error saving file: {e}")
 
@@ -232,11 +238,12 @@ def process_file(file_path, file_name):
     except Exception as e:
         logging.error(f"Error processing file: {e}")
     finally:
-        try:
-            os.remove(file_path)
-            logging.info(f"File removed: {file_path}")
-        except Exception as e:
-            logging.error(f"Failed to remove file: {e}")
+        with file_lock:
+            try:
+                os.remove(file_path)
+                logging.info(f"File removed: {file_path}")
+            except Exception as e:
+                logging.error(f"Failed to remove file: {e}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", threaded=True)
