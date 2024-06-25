@@ -156,7 +156,7 @@ def find_and_update_empty_cell(link, file_name):
 
         # 如果找不到空的 C 欄位，則新增一筆資料在第二行
         timestamp = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime("%Y/%m/%d %H:%M:%S")
-        append_to_sheet(date=timestamp, pdf_link=link)
+        append_to_sheet(date=timestamp, text=f"新文件: {file_name}", pdf_link=link)
         return False
     except Exception as e:
         logging.error(f"Failed to find and update empty cell: {e}")
@@ -173,8 +173,15 @@ def append_to_sheet(date, text=None, pdf_link=None):
         ).execute()
         values = result.get('values', [])
         
+        # 檢查 text 是否存在於 B 欄位
+        for row in values[1:]:  # 跳過第一行標題
+            if len(row) > 1 and row[1] == text:
+                logging.info(f"Text already exists: {text}")
+                return
+        
         # 插入新的值在第二行
-        values.insert(1, [date, text, pdf_link])
+        new_row = [date, text, pdf_link if pdf_link else '']
+        values.insert(1, new_row)
         value_range_body = {
             "values": values
         }
