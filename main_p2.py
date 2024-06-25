@@ -50,20 +50,13 @@ logging.basicConfig(level=logging.INFO,
 # 創建任務佇列
 task_queue = queue.Queue()
 
-queue_lock = threading.Lock()
-file_lock = threading.Lock()
-
 def process_queue():
     while True:
-        task = None
-        with queue_lock:
-            if not task_queue.empty():
-                task = task_queue.get()
-        if task:
+        task = task_queue.get()
+        try:
             task()
+        finally:
             task_queue.task_done()
-        else:
-            break
 
 # 啟動佇列處理執行緒
 threading.Thread(target=process_queue, daemon=True).start()
@@ -207,7 +200,7 @@ def handle_text_message(event):
     pdf_link = pdf_link_match.group(0) if pdf_link_match else None
 
     logging.info(f"Text message received: {text}")
-    append_to_sheet(date=timestamp, text=text, pdf_link=pdf_link)
+    task_queue.put(lambda: append_to_sheet(date=timestamp, text=text, pdf_link=pdf_link))
 
 @handler.add(MessageEvent, message=FileMessage)
 def handle_file_message(event):
@@ -218,17 +211,16 @@ def handle_file_message(event):
 
     def save_file():
         try:
-            with file_lock:
-                with open(file_path, 'wb') as fd:
-                    for chunk in message_content.iter_content():
-                        fd.write(chunk)
+            with open(file_path, 'wb') as fd:
+                for chunk in message_content.iter_content():
+                    fd.write(chunk)
             logging.info(f"File saved: {file_path}")
 
             task_queue.put(lambda: process_file(file_path, event.message.file_name))
         except Exception as e:
             logging.error(f"Error saving file: {e}")
 
-    threading.Thread(target=save_file).start()
+    save_file()
 
 @retry(tries=5, delay=2, backoff=2)
 def process_file(file_path, file_name):
@@ -239,12 +231,11 @@ def process_file(file_path, file_name):
     except Exception as e:
         logging.error(f"Error processing file: {e}")
     finally:
-        with file_lock:
-            try:
-                os.remove(file_path)
-                logging.info(f"File removed: {file_path}")
-            except Exception as e:
-                logging.error(f"Failed to remove file: {e}")
+        try:
+            os.remove(file_path)
+            logging.info(f"File removed: {file_path}")
+        except Exception as e:
+            logging.error(f"Failed to remove file: {e}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", threaded=True)
