@@ -11,6 +11,7 @@ import threading
 import queue
 from retry import retry
 import utils.gemini_tem as gemi
+import pytz
 
 app = Flask(__name__)
 
@@ -161,7 +162,7 @@ def find_and_update_empty_cell(link, file_name):
             row_index += 1
 
         # 如果找不到空的 C 欄位，則新增一筆資料在第二行
-        timestamp = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+        timestamp = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime("%Y/%m/%d %H:%M:%S")
         append_to_sheet(date=timestamp, pdf_link=link)
         return False
     except Exception as e:
@@ -199,7 +200,7 @@ def append_to_sheet(date, text=None, pdf_link=None):
 def handle_text_message(event):
     text = event.message.text
     user_id = event.source.user_id
-    timestamp = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+    timestamp = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime("%Y/%m/%d %H:%M:%S")
 
     # 檢查是否包含 PDF 連結
     pdf_link_match = re.search(r'http[^\s]+\.pdf', text)
