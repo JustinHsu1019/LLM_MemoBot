@@ -102,7 +102,7 @@ def find_and_update_empty_cell(link, file_name):
         ).execute()
 
         values = result.get('values', [])
-        row_index = len(values) - 1
+        row_index = 1  # 開始於第二行
 
         try:
             gemi_response = gemi.Gemini_Template(f"""
@@ -130,7 +130,7 @@ def find_and_update_empty_cell(link, file_name):
 
         logging.info(f"Gemini response 公司名稱: {gemi_response}")
 
-        while row_index >= 0:
+        while row_index < len(values):
             row = values[row_index]
             try:
                 if row[2] == '':
@@ -151,9 +151,9 @@ def find_and_update_empty_cell(link, file_name):
                     ).execute()
                     logging.info(f"Updated cell C{row_index + 1} with link {link}")
                     return True
-            row_index -= 1
+            row_index += 1
 
-        # 如果找不到空的 C 欄位，則新增一筆資料
+        # 如果找不到空的 C 欄位，則新增一筆資料在第二行
         timestamp = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
         append_to_sheet(date=timestamp, pdf_link=link)
         return False
@@ -164,11 +164,20 @@ def find_and_update_empty_cell(link, file_name):
 def append_to_sheet(date, text=None, pdf_link=None):
     try:
         sheet_range = 'A:C'
-        values = [date, text, pdf_link]
+        
+        # 先取得目前的值
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=sheet_range
+        ).execute()
+        values = result.get('values', [])
+        
+        # 插入新的值在第二行
+        values.insert(1, [date, text, pdf_link])
         value_range_body = {
-            "values": [values]
+            "values": values
         }
-        response = sheets_service.spreadsheets().values().append(
+        response = sheets_service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
             range=sheet_range,
             valueInputOption="RAW",
