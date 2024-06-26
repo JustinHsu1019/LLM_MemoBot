@@ -29,7 +29,7 @@ drive_service = build('drive', 'v3', credentials=creds)
 def upload_to_drive(file_path, file_name):
     try:
         file_metadata = {'name': file_name}
-        media = MediaFileUpload(file_path, mimetype='application/pdf', resumable=True)
+        media = MediaFileUpload(file_path, mimetype='text/plain', resumable=True)
         file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
         # 取得公開連結
