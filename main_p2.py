@@ -11,7 +11,7 @@ import threading
 import queue
 from retry import retry
 import utils.gemini_tem as gemi
-import pytz
+import pytz, time
 
 app = Flask(__name__)
 
@@ -144,7 +144,7 @@ def find_and_update_empty_cell(link, file_name):
                     memo_text = row[1]
                 except:
                     memo_text = ""
-    
+
                 logging.info(f"Processing memo text: {memo_text}")
                 if gemi_response in memo_text:
                     sheets_service.spreadsheets().values().update(
@@ -208,7 +208,8 @@ def handle_text_message(event):
     pdf_link = pdf_link_match.group(0) if pdf_link_match else ""
 
     logging.info(f"Text message received: {text}")
-    task_queue.put(lambda: append_to_sheet(date=timestamp, text=text, pdf_link=pdf_link))
+    # 將任務加入佇列，確保 memo 上傳完成後再處理
+    task_queue.put(lambda: append_to_sheet_and_wait(date=timestamp, text=text, pdf_link=pdf_link))
 
 @handler.add(MessageEvent, message=FileMessage)
 def handle_file_message(event):
@@ -229,6 +230,11 @@ def handle_file_message(event):
             logging.error(f"Error saving file: {e}")
 
     save_file()
+
+@retry(tries=5, delay=2, backoff=2)
+def append_to_sheet_and_wait(date, text=None, pdf_link=None):
+    append_to_sheet(date, text, pdf_link)
+    time.sleep(2)
 
 @retry(tries=5, delay=2, backoff=2)
 def process_file(file_path, file_name):
