@@ -159,7 +159,7 @@ def find_and_update_empty_cell(link, file_name):
 
         # 如果找不到空的 C 欄位，則新增一筆資料在第二行
         timestamp = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime("%Y/%m/%d %H:%M:%S")
-        append_to_sheet(date=timestamp, text=f"新文件: {file_name}", pdf_link=link)
+        append_to_sheet(date=timestamp, text=f"NOT_FOUND:{gemi_response}", pdf_link=link)
         return False
     except Exception as e:
         logging.error(f"Failed to find and update empty cell: {e}")
@@ -180,8 +180,28 @@ def append_to_sheet(date, text=None, pdf_link=None):
         for row in values:
             while len(row) < 3:
                 row.append('')
-        
-        # 插入新的值在第二行
+
+        # 檢查是否有 NOT_FOUND 的項目
+        for i, row in enumerate(values):
+            if len(row) > 1 and row[1].startswith('NOT_FOUND:'):
+                gemi_response = row[1].split(':')[1]
+                if gemi_response in text:
+                    values[i][1] = text
+                    values[i][2] = pdf_link
+                    logging.info(f"Updated row {i + 1} with new memo {text} and link {pdf_link}")
+                    value_range_body = {
+                        "values": values
+                    }
+                    response = sheets_service.spreadsheets().values().update(
+                        spreadsheetId=spreadsheet_id,
+                        range=sheet_range,
+                        valueInputOption="RAW",
+                        body=value_range_body
+                    ).execute()
+                    logging.info(f"Update response: {response}")
+                    return
+
+        # 如果找不到 NOT_FOUND 的項目，則新增一筆資料在第二行
         values.insert(1, [date, text, pdf_link])
         value_range_body = {
             "values": values
