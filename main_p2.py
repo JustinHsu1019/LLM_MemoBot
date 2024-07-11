@@ -187,7 +187,8 @@ def append_to_sheet(date, text=None, pdf_link=None):
                 gemi_response = row[1].split(':')[1]
                 if gemi_response in text:
                     values[i][1] = text
-                    logging.info(f"Updated row {i + 1} with new memo {text}")
+                    values[i][2] = row[2]
+                    logging.info(f"Updated row {i + 1} with new memo {text} and link {row[2]}")
                     value_range_body = {
                         "values": values
                     }
