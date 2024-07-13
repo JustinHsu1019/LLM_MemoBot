@@ -233,7 +233,7 @@ def handle_text_message(event):
 
 @handler.add(MessageEvent, message=FileMessage)
 def handle_file_message(event):
-    time.sleep(20)
+    time.sleep(5)
     message_id = event.message.id
     message_content = line_bot_api.get_message_content(message_id)
     ext = event.message.file_name.split('.')[-1]
