@@ -219,7 +219,6 @@ def append_to_sheet(date, text=None, pdf_link=None):
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
-    time.sleep(20)
     text = event.message.text
     user_id = event.source.user_id
     timestamp = datetime.datetime.now(pytz.timezone('Asia/Taipei')).strftime("%Y/%m/%d %H:%M:%S")
@@ -234,6 +233,7 @@ def handle_text_message(event):
 
 @handler.add(MessageEvent, message=FileMessage)
 def handle_file_message(event):
+    time.sleep(20)
     message_id = event.message.id
     message_content = line_bot_api.get_message_content(message_id)
     ext = event.message.file_name.split('.')[-1]
