@@ -1,6 +1,7 @@
 # secret ini
 cred.json
 config_real.ini
+testllm/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
