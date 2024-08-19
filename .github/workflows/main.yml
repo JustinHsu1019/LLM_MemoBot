@@ -1,4 +1,4 @@
-name: Run Python Script
+name: Run Python Scripts
 
 on:
   schedule:
@@ -28,8 +28,11 @@ jobs:
         GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
       run: echo "$GOOGLE_CREDENTIALS" > cred.json
 
-    - name: Run script
+    - name: Run main.py script
       run: python main.py
+
+    - name: Run main_p3.py script
+      run: python main_p3.py
 
     - name: Remove credentials file
       run: rm cred.json

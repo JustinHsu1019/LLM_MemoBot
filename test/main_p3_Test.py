@@ -4,12 +4,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
-from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-from datetime import datetime
-import io
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+from openpyxl.styles import Font, Alignment
 
 chrome_options = Options()
 chrome_options.add_argument("--headless")
@@ -39,7 +34,6 @@ def scrape_ranking_data(driver, url, top_n):
 
     columns = ["券資比排名", "代碼 / 股票名稱", "股票代碼", "券資比", "當沖比率"]
     return pd.DataFrame(data, columns=columns)
-
 
 def calculate_consecutive_days(driver, stock_code):
     url = f"https://www.cmoney.tw/finance/{stock_code}/f00037"
@@ -88,63 +82,19 @@ def get_consecutive_change(stock_ratios):
             print(f"當前趨勢一致，連續天數增加至: {count}")
         else:
             print(f"趨勢改變，最終連續天數為: {count}")
-            return count if sign == 1 else -count
+            return count
 
     print(f"趨勢沒有改變，最終連續天數為: {count}")
-    return count if sign == 1 else -count
-
-def upload_to_drive(file_content):
-    SCOPES = ['https://www.googleapis.com/auth/drive.file']
-    SERVICE_ACCOUNT_FILE = 'cred.json'
-
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-
-    drive_service = build('drive', 'v3', credentials=credentials)
-
-    file_metadata = {
-        'name': 'stock_report.xlsx',
-        'mimeType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    }
-    media = MediaIoBaseUpload(file_content, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', resumable=True)
-
-    file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    file_id = file.get('id')
-
-    drive_service.permissions().create(
-        fileId=file_id,
-        body={'type': 'anyone', 'role': 'reader'}
-    ).execute()
-
-    return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
-
-def update_google_sheet(date, link):
-    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-    SERVICE_ACCOUNT_FILE = 'cred.json'
-
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-
-    sheets_service = build('sheets', 'v4', credentials=credentials)
-    spreadsheet_id = '1XgZF7I9HyjRveGid483HFLvmrup8CgUdJhNWbiZDFrs'
-    range_name = 'A:B'
-    
-    body = {
-        'values': [
-            [date, link]
-        ]
-    }
-
-    result = sheets_service.spreadsheets().values().append(
-        spreadsheetId=spreadsheet_id, range=range_name,
-        valueInputOption='RAW', body=body).execute()
+    return count
 
 url_ranking = "https://www.cmoney.tw/finance/f00068.aspx"
 top_n = 11
 
 ranking_data = scrape_ranking_data(driver, url_ranking, top_n)
 
-ranking_data["券資比遞增遞減"] = ranking_data["股票代碼"].apply(lambda stock_code: calculate_consecutive_days(driver, stock_code))
+# ranking_data["券資比遞增遞減"] = ranking_data["股票代碼"].apply(lambda stock_code: calculate_consecutive_days(driver, stock_code))
+ranking_data["券資比遞增遞減"] = ranking_data["股票代碼"].apply(lambda stock_code: 1)
+
 ranking_data.drop(columns=["股票代碼"], inplace=True)
 
 cols = ["券資比排名", "代碼 / 股票名稱", "券資比", "券資比遞增遞減", "當沖比率"]
@@ -152,10 +102,13 @@ ranking_data = ranking_data[cols]
 
 driver.quit()
 
-output = io.BytesIO()
+from datetime import datetime
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+
+file_name = "stock_report.xlsx"
 today_date = datetime.now().strftime("%Y/%m/%d")
 
-with pd.ExcelWriter(output, engine='openpyxl') as writer:
+with pd.ExcelWriter(file_name, engine='openpyxl') as writer:
     ranking_data.to_excel(writer, sheet_name='工作表', index=False, startrow=2, startcol=1)
     workbook = writer.book
     worksheet = writer.sheets['工作表']
@@ -224,10 +177,4 @@ with pd.ExcelWriter(output, engine='openpyxl') as writer:
     worksheet.cell(row=3, column=4).border = no_border
     worksheet.cell(row=3, column=5).border = no_border
 
-output.seek(0)
-
-drive_link = upload_to_drive(output)
-
-update_google_sheet(today_date, drive_link)
-
-print("Report generated and uploaded successfully.")
+print(f"Excel 檔案 '{file_name}' 已生成於當前目錄。")
