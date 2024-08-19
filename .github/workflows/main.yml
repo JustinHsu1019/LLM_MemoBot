@@ -2,11 +2,13 @@ name: Run Python Scripts
 
 on:
   schedule:
-    - cron: '00 10 * * *'
+    - cron: '00 10 * * *'  # 10:00 執行主腳本
+    - cron: '00 13 * * *'  # 13:00 執行 main_p3.py
   workflow_dispatch:
 
 jobs:
-  build:
+  run-main-p3:
+    if: github.event.schedule == 'cron: 00 13 * * *'
     runs-on: ubuntu-latest
 
     steps:
@@ -30,6 +32,32 @@ jobs:
 
     - name: Run main_p3.py script
       run: python main_p3.py
+
+    - name: Remove credentials file
+      run: rm cred.json
+
+  run-main:
+    if: github.event.schedule == 'cron: 00 10 * * *'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install selenium pandas openpyxl google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client webdriver-manager
+
+    - name: Create credentials file
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      run: echo "$GOOGLE_CREDENTIALS" > cred.json
 
     - name: Run main.py script
       run: python main.py
