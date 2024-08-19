@@ -8,7 +8,6 @@ on:
 
 jobs:
   run-main-p3:
-    if: github.event.schedule == 'cron: 00 13 * * *'
     runs-on: ubuntu-latest
 
     steps:
@@ -31,13 +30,13 @@ jobs:
       run: echo "$GOOGLE_CREDENTIALS" > cred.json
 
     - name: Run main_p3.py script
+      if: github.event.schedule == '00 13 * * *'
       run: python main_p3.py
 
     - name: Remove credentials file
       run: rm cred.json
 
   run-main:
-    if: github.event.schedule == 'cron: 00 10 * * *'
     runs-on: ubuntu-latest
 
     steps:
@@ -60,6 +59,7 @@ jobs:
       run: echo "$GOOGLE_CREDENTIALS" > cred.json
 
     - name: Run main.py script
+      if: github.event.schedule == '00 10 * * *'
       run: python main.py
 
     - name: Remove credentials file
