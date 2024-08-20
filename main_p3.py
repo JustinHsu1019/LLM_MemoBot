@@ -88,10 +88,12 @@ def get_consecutive_change(stock_ratios):
             print(f"當前趨勢一致，連續天數增加至: {count}")
         else:
             print(f"趨勢改變，最終連續天數為: {count}")
-            return count if sign == 1 else -count
+            count = count - 1
+            return -count if sign == 1 else count
 
     print(f"趨勢沒有改變，最終連續天數為: {count}")
-    return count if sign == 1 else -count
+    count = count - 1
+    return -count if sign == 1 else count
 
 def upload_to_drive(file_content):
     SCOPES = ['https://www.googleapis.com/auth/drive.file']
