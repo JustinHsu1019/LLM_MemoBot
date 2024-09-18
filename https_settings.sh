@@ -1,3 +1,45 @@
+#######################
+#    For AWS Server   #
+#######################
+
+# Line Dev 建立一支 Bot＋設定完成
+# AWS 防火牆（安全群組）Port 開好
+# AWS 彈性 IP 綁定
+
+sudo apt update
+sudo apt install certbot python3-certbot-nginx
+
+sudo vim /etc/nginx/sites-available/default
+"""
+server {
+    listen 80;
+    server_name memom.ddns.net;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;  # Flask 默認運行在 5000 端口
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+"""
+
+python3 -m venv doc_venv
+source doc_venv/bin/activate
+pip install -r requirements.txt
+
+nohup python3 main_p2.py &
+sudo certbot --nginx -d memom.ddns.net
+
+# 測試自動刷新憑證
+sudo certbot renew --dry-run
+
+
+#######################
+#    For GCP Server   #
+#######################
+
 # [First] 使用 noip 註冊一個 Domain + IPv4 Address 綁定正確
 sudo apt-get install python3 python3-pip nginx
 sudo apt-get install certbot python3-certbot-nginx
