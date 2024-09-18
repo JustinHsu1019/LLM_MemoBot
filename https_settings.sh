@@ -5,6 +5,7 @@
 # Line Dev 建立一支 Bot＋設定完成
 # AWS 防火牆（安全群組）Port 開好
 # AWS 彈性 IP 綁定
+# noip 建立免費 Domain＋綁定 IP
 
 sudo apt update
 sudo apt install certbot python3-certbot-nginx
@@ -13,7 +14,7 @@ sudo vim /etc/nginx/sites-available/default
 """
 server {
     listen 80;
-    server_name memom.ddns.net;
+    server_name your_domain;
 
     location / {
         proxy_pass http://127.0.0.1:5000;  # Flask 默認運行在 5000 端口
