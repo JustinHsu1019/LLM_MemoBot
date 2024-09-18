@@ -65,15 +65,23 @@ threading.Thread(target=process_queue, daemon=True).start()
 def home():
     return "Ready vv2!"
 
-@app.route("/callback", methods=['POST'])
-def callback():
+@app.route("/callback/<secret_key>", methods=['POST'])
+def callback(secret_key):
+    expected_secret_key = config.get("secret", "key")
+
+    if secret_key != expected_secret_key:
+        logging.error("Unauthorized access attempt")
+        abort(403)
+
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
+
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         logging.error("Invalid signature error")
         abort(400)
+
     return 'OK'
 
 @retry(tries=5, delay=2, backoff=2)
